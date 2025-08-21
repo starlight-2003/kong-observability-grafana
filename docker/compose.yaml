@@ -1,3 +1,4 @@
+#version: "3.9"
 services:
   kong:
     image: kong/kong-gateway:3.7
@@ -20,6 +21,7 @@ services:
       - "8002:8002"
     networks:
       - kong-obs
+
   fluentbit:
     image: fluent/fluent-bit:3.1.2
     container_name: fluentbit
@@ -29,6 +31,7 @@ services:
       - kong-obs
     volumes:
       - ./configs/fluent-bit.yaml:/fluent-bit/etc/fluent-bit.yaml
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.101.0
     container_name: otel-collector
@@ -36,15 +39,23 @@ services:
       - kong-obs
     volumes:
       - ./configs/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
-  jaeger:
-    image: jaegertracing/all-in-one:1.57
-    container_name: jaeger
+
+  tempo:
+    image: grafana/tempo:2.4.1
+    container_name: tempo
+    volumes:
+      - ./configs/tempo.yaml:/etc/tempo.yaml
+    command: ["-config.file=/etc/tempo.yaml"]
+    restart: unless-stopped
     ports:
-      - "16686:16686"
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
+      - "14268:14268"
+      - "9411:9411"
     networks:
       - kong-obs
+
   prometheus:
     image: prom/prometheus:v2.52.0
     container_name: prometheus
@@ -59,22 +70,56 @@ services:
       - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - kong-obs
-  loki:
+
+  loki-read:
     image: grafana/loki:3.0.0
-    container_name: loki
-    command: ["-config.file=/mnt/config/loki-config.yaml"]
+    command:
+      - -config.file=/mnt/config/loki-config.yaml
+      - -target=read
+    ports:
+      - 3101:3100
+      - 7946
+      - 9095
     volumes:
       - ./configs/loki-config.yaml:/mnt/config/loki-config.yaml
     networks:
-      - kong-obs
+      kong-obs:
+        aliases:
+          - loki-read
+
+  loki-write:
+    image: grafana/loki:3.0.0
+    command:
+      - -config.file=/mnt/config/loki-config.yaml
+      - -target=write
+    ports:
+      - 3102:3100
+      - 7946
+      - 9095
+    volumes:
+      - ./configs/loki-config.yaml:/mnt/config/loki-config.yaml
+    networks:
+      kong-obs:
+        aliases:
+          - loki-write
+  loki-backend:
+    image: grafana/loki:3.0.0
+    command:
+      - -config.file=/mnt/config/loki-config.yaml
+      - -target=backend
+    ports:
+      - 3103:3100
+      - 7946
+      - 9095
+    volumes:
+      - ./configs/loki-config.yaml:/mnt/config/loki-config.yaml
+    networks:
+      kong-obs:
+        aliases:
+          - loki-backend
   grafana:
     image: grafana/grafana-oss:11.0.0
     container_name: grafana
-    environment:
-      - GF_USERS_DEFAULT_THEME=light
-      - GF_AUTH_ANONYMOUS_ENABLED=true
-      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
-      - GF_AUTH_DISABLE_LOGIN_FORM=true
     volumes:
       - ./configs/grafana/datasources:/etc/grafana/provisioning/datasources/
       - ./configs/grafana/dashboards:/etc/grafana/provisioning/dashboards/
@@ -82,6 +127,7 @@ services:
       - "3000:3000"
     networks:
       - kong-obs
+
   hotrod:
     image: jaegertracing/example-hotrod:1.57
     container_name: hotrod
@@ -90,5 +136,7 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
     networks:
       - kong-obs
+
 networks:
   kong-obs:
+    driver: bridge

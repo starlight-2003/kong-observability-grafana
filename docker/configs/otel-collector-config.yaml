@@ -16,6 +16,7 @@ receivers:
         scrape_interval: 5s
         static_configs:
         - targets: ['0.0.0.0:8888']
+
 processors:
   batch:
   resource:
@@ -23,16 +24,18 @@ processors:
       - action: upsert
         key: service.name
         value: kong-http-logs
+
 exporters:
-  otlp/jaeger:
-    endpoint: jaeger:4317
+  otlp/tempo:
+    endpoint: tempo:4317
     tls:
       insecure: true
   prometheus:
     endpoint: "0.0.0.0:9090"
   otlphttp:
-    endpoint: http://loki:3100/otlp
+    endpoint: http://loki-write:3100/otlp
     encoding: json
+
 service:
   telemetry:
     metrics:
@@ -43,6 +46,7 @@ service:
         - otlp
       processors:
         - resource
+        - batch
       exporters:
         - otlphttp
     metrics:
@@ -54,6 +58,7 @@ service:
     traces:
       receivers:
         - otlp
-      processors: []
+      processors:
+        - batch
       exporters:
-        - otlp/jaeger
+        - otlp/tempo
