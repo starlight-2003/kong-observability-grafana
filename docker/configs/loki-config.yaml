@@ -1,37 +1,37 @@
 server:
-  http_listen_port: 3100
-  grpc_listen_port: 9096
-  grpc_server_max_recv_msg_size: 33554432
+  http_listen_port: 3100                   # port http
+  grpc_listen_port: 9096                   # port grpc
+  grpc_server_max_recv_msg_size: 33554432   # 32MB
   grpc_server_max_send_msg_size: 33554432
   http_server_write_timeout: 310s
   http_server_read_timeout: 310s
 
-memberlist:
-  join_members: ["loki-read","loki-write","loki-backend"]
-  dead_node_reclaim_time: 30s
-  gossip_to_dead_nodes_time: 15s
-  left_ingesters_timeout: 30s
-  bind_addr: ['0.0.0.0']
-  bind_port: 7946
-  gossip_interval: 2s
+memberlist:                                                # giao thức memberlist
+  join_members: ["loki-read","loki-write","loki-backend"]  # danh sách các thành viên trong cluster
+  dead_node_reclaim_time: 30s                              # thời gian để reclaim dead node
+  gossip_to_dead_nodes_time: 15s                           # thời gian để gossip đến các node đã chết
+  left_ingesters_timeout: 30s                              # thời gian để ingesters left
+  bind_addr: ['0.0.0.0']                                   # địa chỉ để bind
+  bind_port: 7946                                          # port để bind
+  gossip_interval: 2s                                      # khoảng thời gian để gossip
 
 schema_config:
   configs:
-    - from: 2020-10-24
-      store: tsdb
-      object_store: filesystem
-      schema: v13
+    - from: 2020-10-24                                     # ngày bắt đầu của schema
+      store: tsdb                                          # store để lưu trữ dữ liệu 
+      object_store: filesystem                             # object store để lưu trữ dữ liệu
+      schema: v13                                          # schema để sử dụng
       index:
         prefix: index_
         period: 24h
 
-common:
-  path_prefix: /tmp/loki
-  compactor_address: http://loki-backend:3100
+common: 
+  path_prefix: /tmp/loki                                   # đường dẫn để lưu trữ dữ liệu
+  compactor_address: http://loki-backend:3100              # địa chỉ của backend service
   storage:
     filesystem:
-      chunks_directory: /tmp/loki/chunks
-      rules_directory: /tmp/loki/rules
+      chunks_directory: /tmp/loki/chunks                   # đường dẫn để lưu trữ chunks
+      rules_directory: /tmp/loki/rules                     # đường dẫn để lưu trữ rules
   replication_factor: 1
   ring:
     kvstore:
@@ -47,31 +47,31 @@ index_gateway:
       store: memberlist
 
 querier:
-  multi_tenant_queries_enabled: true
-  max_concurrent: 8
+  multi_tenant_queries_enabled: true                       # cho phép multi-tenant queries
+  max_concurrent: 8                                        # số lượng concurrent queries tối đa
 
 frontend:
-  log_queries_longer_than: 15s
-  compress_responses: true
-  max_outstanding_per_tenant: 2048
+  log_queries_longer_than: 15s                             # log các queries có thời gian thực hiện lâu hơn 15 giây
+  compress_responses: true                                 # nén các responses
+  max_outstanding_per_tenant: 2048                         # số lượng outstanding requests tối đa cho mỗi tenant 
 
 query_range:
   align_queries_with_step: true
   max_retries: 5
-  cache_results: true
+  cache_results: true                                      # cho phép cache kết quả của queries
   results_cache:
     cache:
       embedded_cache:
         enabled: true
-        max_size_mb: 2048
-        ttl: 30m
+        max_size_mb: 2048                                  # kích thước tối đa của cache : 2GB
+        ttl: 30m                                           # thời gian sống của cache
 
-distributor:
+distributor:                                               # điều phối log tới các ingesters
   ring:
     kvstore:
       store: memberlist
-    heartbeat_period: 5s
-    heartbeat_timeout: 1m
+    heartbeat_period: 5s                                   # khoảng thời gian để heartbeat
+    heartbeat_timeout: 1m                                  # thời gian để timeout heartbeat
 
 ingester:
   lifecycler:
@@ -80,18 +80,18 @@ ingester:
         store: memberlist
       replication_factor: 1
     heartbeat_timeout: 1m
-  chunk_idle_period: 15m
-  chunk_encoding: snappy
-  max_chunk_age: 1h
-  chunk_target_size: 33554432
+  chunk_idle_period: 15m                                   # khoảng thời gian để chunk idle
+  chunk_encoding: snappy                                   # mã hóa chunk bằng snappy
+  max_chunk_age: 1h                                        # thời gian tối đa của chunk
+  chunk_target_size: 33554432                              # kích thước mục tiêu của chunk: 32MB
   chunk_retain_period: 2m
   flush_op_timeout: 5s
   wal:
     enabled: true
     dir: /tmp/loki/wal
     replay_memory_ceiling: 5GB
-  concurrent_flushes: 32
-  flush_check_period: 15s
+  concurrent_flushes: 32                                   # số lượng flushes đồng thời
+  flush_check_period: 15s                                  # khoảng thời gian để kiểm tra flush
 
 query_scheduler:
   use_scheduler_ring: true
@@ -117,7 +117,7 @@ analytics:
   reporting_enabled: false
 
 limits_config:
-  max_query_series: 3000
-  max_entries_limit_per_query: 10000
-  query_timeout: 1m
-  split_queries_by_interval: 30m
+  max_query_series: 3000                                     # số lượng series tối đa cho mỗi query
+  max_entries_limit_per_query: 10000                         # số lượng entries tối đa cho mỗi query
+  query_timeout: 1m                                          # thời gian tối đa cho mỗi query
+  split_queries_by_interval: 30m                             # chia queries theo khoảng thời gian 30 phút
